@@ -8,29 +8,23 @@
 --An app that costs $200,000 will make the same per month as an app that costs $1.00. 
 --An app that is on both app stores will make $10,000 per month. 
 
-select 
-		distinct app_store_apps.name,
-		 play_store_apps.name,
-		round((app_store_apps.rating + play_store_apps.rating)/2,2) as combined_avg_rating, 
-		app_store_apps.review_count,
-		sum(play_store_apps.review_count)
-from app_store_apps 
---7197
-inner join play_store_apps
---553
-using (name)
-where app_store_apps.rating >= 4.0
-	and play_store_apps.rating>=4.0
-group by distinct app_store_apps.name,
-		 play_store_apps.name,
-		 combined_avg_rating, 
-		app_store_apps.review_count
-order by sum(play_store_apps.review_count) desc;
---248 rows
 
-
+select
+distinct app_store_apps.name,
+play_store_apps.rating,
+app_store_apps.rating,
+cast(app_store_apps.review_count as integer) as ios_review_integer, sum(play_store_apps.review_count)/2 as combined_avg_review_count,
 case
-			when app_store_apps.price > play_store_apps.price
-			 then  app_store_apps.price
-			 else  play_store_apps.price
+			when cast(app_store_apps.price as money) > cast(play_store_apps.price as money)
+			 then  cast(app_store_apps.price as money)
+			 else  cast(play_store_apps.price as money)
 			 end as greater_price
+from app_store_apps
+inner join play_store_apps
+using (name)
+where play_store_apps.rating > 
+	(select avg(play_store_apps.rating) from play_store_apps)
+and app_store_apps.rating > (select avg(app_store_apps.rating) from app_store_apps)
+group by distinct app_store_apps.name, ios_review_integer, greater_price, play_store_apps.rating,
+app_store_apps.rating
+order by play_store_apps.rating, app_store_apps.rating desc;
