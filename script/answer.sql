@@ -8,12 +8,16 @@
 --An app that costs $200,000 will make the same per month as an app that costs $1.00. 
 --An app that is on both app stores will make $10,000 per month. 
 
-
 SELECT
 DISTINCT app_store_apps.name,
 --did this to eliminate duplicate play store apps
-play_store_apps.rating AS android_rating,
-app_store_apps.rating AS ios_rating,
+app_store_apps.primary_genre,
+CASE 
+	WHEN play_store_apps.rating > app_store_apps.rating
+	THEN play_store_apps.rating
+	ELSE app_store_apps.rating
+	END AS greater_rating,
+--did this to only display the highest app rating between the two
 CAST
 	(app_store_apps.review_count AS integer) AS ios_review_integer,
 --did this to take this from text to integer
@@ -24,17 +28,19 @@ CASE
 			 THEN CAST(app_store_apps.price AS money)
 			 ELSE CAST(play_store_apps.price AS money)
 			 END AS greater_price
-			 --did this to only display the highest app price between              the two
+			 --did this to only display the highest app price between the two
 FROM app_store_apps
 INNER JOIN play_store_apps
 USING (name)
-WHERE play_store_apps.rating> 4.20
---figured the avg using this (select round(avg(play_store_apps.rating),2) as avg_p_rating from play_store_apps)
-	AND app_store_apps.rating>3.54 
---figured the avg using this (select round(avg(app_store_apps.rating),2) as avg_a_rating from app_store_apps)
+WHERE play_store_apps.rating> (SELECT round(AVG(rating), 2)+.01
+FROM play_store_apps)
+--figured the avg 
+	AND app_store_apps.rating>(SELECT round(AVG(rating), 2)+.01
+FROM app_store_apps) 
+--figured the avg
 	AND play_store_apps.review_count>10000
 	AND CAST
 	(app_store_apps.review_count AS integer)>10000
-GROUP BY DISTINCT app_store_apps.name, play_store_apps.rating, app_store_apps.rating, ios_review_integer, greater_price
-ORDER BY play_store_apps.rating DESC
+GROUP BY DISTINCT app_store_apps.name, app_store_apps.primary_genre, greater_rating, ios_review_integer, greater_price
+ORDER BY greater_rating DESC
 LIMIT 10;
