@@ -11,15 +11,11 @@
 SELECT
 DISTINCT app_store_apps.name,
 --did this to eliminate duplicate play store apps
-app_store_apps.primary_genre,
-CASE 
-	WHEN play_store_apps.rating > app_store_apps.rating
-	THEN play_store_apps.rating
-	ELSE app_store_apps.rating
-	END AS greater_rating,
---did this to only display the highest app rating between the two
+app_store_apps.primary_genre AS genre,
+round((app_store_apps.rating + play_store_apps.rating)/2,2) AS combined_rating,
+--did this to only display the combined app rating between the two
 CAST
-	(app_store_apps.review_count AS integer) AS ios_review_integer,
+	(app_store_apps.review_count AS integer) AS ios_review_count,
 --did this to take this from text to integer
 SUM(play_store_apps.review_count) AS android_review_count,
 --did this to combine all the similar play store review counts
@@ -38,9 +34,9 @@ FROM play_store_apps)
 	AND app_store_apps.rating>(SELECT round(AVG(rating), 2)+.01
 FROM app_store_apps) 
 --figured the avg
-	AND play_store_apps.review_count>10000
-	AND CAST
-	(app_store_apps.review_count AS integer)>10000
-GROUP BY DISTINCT app_store_apps.name, app_store_apps.primary_genre, greater_rating, ios_review_integer, greater_price
-ORDER BY greater_rating DESC
+GROUP BY DISTINCT app_store_apps.name, app_store_apps.primary_genre, combined_rating, ios_review_count, greater_price
+HAVING SUM(play_store_apps.review_count)>(SELECT AVG(play_store_apps.review_count) FROM play_store_apps)
+AND CAST(app_store_apps.review_count AS integer)>(SELECT AVG(CAST(review_count AS integer))
+FROM app_store_apps)
+ORDER BY combined_rating DESC
 LIMIT 10;
