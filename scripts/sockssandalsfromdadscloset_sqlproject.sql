@@ -59,18 +59,18 @@ SELECT DISTINCT CONTENT_RATING
 from app_store_apps
 order by content_rating
    
-	
-with cte as (	
+ -- Andrii walked me through the query creation --	
+with cte as (	                                       
 	SELECT DISTINCT p.name as app_name,
 	ROUND((a.rating + p.rating)/2,1) AS avg_rating,
 CASE WHEN cast(replace(p.price, '$', '') as money) > cast(a.price as money)
-		then cast(replace(p.price, '$', '') as money)
+		then cast(replace(p.price, '$', '') as money) 
 		else  cast(a.price as money)
-	end as higher_price
+	end as higher_price,
+	cast(replace(p.price, '$','') as money) play_store_price, cast(a.price as money) app_store_price
 FROM app_store_apps AS a
 INNER JOIN play_store_apps AS p
 USING (name)),	
--- 2ND PART OF QUERY--
 cte0 as(
 	SELECT
     app_name,
@@ -83,4 +83,16 @@ then (higher_price::numeric * 10000)::money
 	ELSE 1000::money 
 END AS purchase_price,
 floor((avg_rating/.5)+1) as longevity_in_years
-FROM ),
+FROM cte),
+	cte2 as(
+	SELECT app_name,
+		avg_rating, 
+	higher_price,
+	play_store_price,
+	app_store_price,
+	purchase_price,
+	longevity_in_years,
+	(longevity_in_years * 10000)::money as gross_profit, (longevity_in_years * 10000)::money - purchase_price AS net_profit from cte0
+	order by gross_profit desc, purchase_price asc)
+SELECT * from cte2
+	order by net_profit desc, avg_rating desc; 
